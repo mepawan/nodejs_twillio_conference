@@ -1,0 +1,117 @@
+********* Instructions ***********
+
+1. put 'twilio_lib' folder with all files inside it into root of your server where server.js is place. twilio_lib.zip is attached with this email.
+
+2. there is 'node_modules.zip' is attached with this email. Move all folders inside this attached 'node_modules' to 'node_modules' folder of your server root.
+
+
+3. edit routes/index.js file.
+    i)  Find this code ( about line no 537):
+                app.get('/yourclasses', function(req, res) {
+                    if (req.isAuthenticated()) {
+        Add this code just after:
+            
+                //twilio call
+                var twilio = require('../twilio_lib');
+                var capability = new twilio.Capability('ACc8feda19a9da531171d435712bd23c2d','8e8bdbfba9e35b56ef88dccf42deb833');
+    
+                // Give the capability generator permission to accept incoming
+                // calls to the ID "kevin"
+                capability.allowClientIncoming('kevin');
+            
+                // Give the capability generator permission to make outbound calls,
+                // Using the following TwiML app to request call handling instructions:
+                capability.allowClientOutgoing('AP72243e7b713f03d1a5a739b8bc84f153');
+        
+    ii) Find this code (about line no 545 ):
+                 res.render('yourclasses', {
+                        title: 'Your Classes',
+                        heading: '',
+                        user: req.user
+                        
+        Add this code just after:
+                    ,token:capability.generate()
+                    
+                    
+4. eidt views/yourclasses.ejs file.
+    i)  Find this code ( about line no: 168 and 204): 
+                <tr>
+                    <td>
+                        {{ c.local.firstName }} {{ c.local.lastName }}
+                    </td>
+                </tr>
+                    
+        Add this code just after both places (after end of both <tr> on line 168 and 204):   
+                <tr class="row_3">
+                    <td>
+                            <input type="text" class="custom_no" id="cusomno_3" /><br />
+                            <button class="btn btn-success call" data-id="3" data-phone="+19039842785" onClick="twlCall(this);" >Call</button>
+                            <p class="status" style="display:none;" data-id="3">Awaiting incoming call...</p>
+                            <button class="btn btn-danger hangup"   style="display:none;" data-id="3" onClick="twlDisconnect(this);">Hang Up</button>
+                                                                                        
+                    </td>
+                </tr>
+        Note: - i) there is class "row_3" for <tr>. change '3' with unique id like user id of student or teacher. every new <tr>  added should have unique id as a class name.
+                ii) also there is ' data-id="3" ' field for both <button> tag and <p> tag and 'id="customno_3"' for <input> tag. this 3 should be same as row_3 class of <tr> tag.
+
+    ii) Find this code (about line no : ):
+                <script>
+                //set user id
+                var user_id = "<%= user._id %>";
+                
+                </script>
+        Add this code just after:
+                <!-- include the Twilio Client JavaScript SDK -->
+                <!--script src="//static.twilio.com/libs/twiliojs/1.1/twilio.min.js"></script-->
+                <script type="text/javascript" src="//static.twilio.com/libs/twiliojs/1.2/twilio.min.js">
+                 
+                <!-- include jQuery to make DOM manipulation and event handling nicer -->
+                <script src="//code.jquery.com/jquery-1.9.1.min.js"></script>
+                 
+                <!-- accept incoming calls to this client -->
+                <script type="text/javascript">
+                        var uid  = '';
+                        
+                        $(document).ready(function(){
+                                Twilio.Device.setup('<%= token %>');
+                                var connection=null;
+                
+                                Twilio.Device.incoming(function (conn) {
+                                        if (confirm('Accept incoming call from ' + conn.parameters.From + '?')){
+                                                connection=conn;
+                                                conn.accept();
+                                        }
+                                });
+                                
+                                Twilio.Device.connect(function (conn) {
+                                        $('.row_' +uid+' .status').text("Successfully established call");
+                                        toggleCallStatus();
+                                });
+                                Twilio.Device.disconnect(function (conn) {
+                                        $('.row_' +uid+' .status').text("Call ended");
+                                        toggleCallStatus();
+                                });
+                                
+                        });
+                        
+                        function toggleCallStatus(){
+                                $('.row_' +uid+' .call').toggle();
+                                $('.row_' +uid+' .hangup').toggle();
+                                $('.row_' +uid+' .status').toggle();
+                        }
+                        function twlCall(elm){
+                                //var to = $(elm).attr('data-phone');
+                                var to = $(elm).next('.custom_no').val();
+                                uid = $(elm).attr('data-id');
+                                Twilio.Device.connect({
+                                    CallerId:'+18018232898', 
+                                    PhoneNumber:to 
+                                });
+                        }
+                        function twlDisconnect(elm){
+                                uid = $(elm).attr('data-id');
+                                Twilio.Device.disconnectAll();
+                        }
+                 </script>
+                
+NOTE - > I think you need to re-start node server once.
